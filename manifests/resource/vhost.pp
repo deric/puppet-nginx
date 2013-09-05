@@ -138,8 +138,15 @@ define nginx::resource::vhost (
   $use_default_location   = true,
 ) {
 
+  # Validation.
   validate_array($location_allow)
   validate_array($location_deny)
+
+  #
+  $file_ensure = $ensure ? {
+    'absent' => absent,
+    default  => 'file',
+  }
 
   File {
     ensure => $ensure ? {
@@ -154,7 +161,7 @@ define nginx::resource::vhost (
 
   # Add IPv6 Logic Check - Nginx service will not start if ipv6 is enabled
   # and support does not exist for it in the kernel.
-  if ($ipv6_enable == true) and (!$ipaddress6) {
+  if ( $::ipv6_enable == true ) and ( ! $::ipaddress6 ) {
     warning('nginx: IPv6 support is not enabled or configured properly')
   }
 
