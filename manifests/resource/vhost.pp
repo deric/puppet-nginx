@@ -142,11 +142,24 @@ define nginx::resource::vhost (
   validate_array($location_allow)
   validate_array($location_deny)
 
-  #
+  # Variables
   $file_ensure = $ensure ? {
     'absent' => absent,
     default  => 'file',
   }
+
+  $config_file = "${nginx::config::nx_conf_dir}/conf.d/${name}.conf"
+
+  if ( $ssl == true ) and ( $ssl_port == $listen_port ) {
+    $ssl_only = true
+  }
+
+  # Add IPv6 Logic Check - Nginx service will not start if ipv6 is enabled
+  # and support does not exist for it in the kernel.
+  if ( $::ipv6_enable == true ) and ( ! $::ipaddress6 ) {
+    warning('nginx: IPv6 support is not enabled or configured properly')
+  }
+
 
   File {
     ensure => $ensure ? {
@@ -159,11 +172,15 @@ define nginx::resource::vhost (
     mode   => '0644',
   }
 
-  # Add IPv6 Logic Check - Nginx service will not start if ipv6 is enabled
-  # and support does not exist for it in the kernel.
-  if ( $::ipv6_enable == true ) and ( ! $::ipaddress6 ) {
-    warning('nginx: IPv6 support is not enabled or configured properly')
+  concat { $config_file:
+    # Waiting on https://github.com/puppetlabs/puppetlabs-concat/pull/39/files
+    #ensure => $file_ensure,
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0644',
+    notify => Class['nginx::service'],
   }
+
 
   # Check to see if SSL Certificates are properly defined.
   if ($ssl == true) {
@@ -297,5 +314,11 @@ define nginx::resource::vhost (
       mode   => '0440',
       source => $ssl_key,
     })
+  }
+
+  concat::fragment { "${name}-footer":
+    target  => $config_file,
+    content => template('nginx/vhost/vhost_footer.erb'),
+    order   => '999',
   }
 }
