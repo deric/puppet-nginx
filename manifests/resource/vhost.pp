@@ -281,14 +281,13 @@ define nginx::resource::vhost (
       undef   => "${nginx::params::nx_logdir}/ssl-${domain_log_name}.error.log",
       default => $error_log,
     }
-    file { "${nginx::config::nx_temp_dir}/nginx.d/${name}-700-ssl":
-      ensure  => $ensure ? {
-        'absent' => absent,
-        default  => 'file',
-      },
+    concat::fragment { "${name}-ssl":
+      target  => $config_file,
       content => template('nginx/vhost/vhost_ssl_header.erb'),
+      order   => '700',
       notify  => Class['nginx::service'],
     }
+
     file { "${nginx::config::nx_temp_dir}/nginx.d/${name}-999-ssl":
       ensure  => $ensure ? {
         'absent' => absent,
